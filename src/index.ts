@@ -1,0 +1,21 @@
+export { StepHubClient } from './client';
+export type {
+  StepHubClientConfig,
+  CheckUserResponse,
+  UserDataResponse,
+  ConnectionRequest,
+  ConnectionStatusResponse,
+  ConnectionStatus,
+  TrustTier,
+  Scope,
+  NudgeResponse,
+  DailyStatsResponse,
+  DailyStatsOptions,
+  DailyStatDay,
+  WorkoutHistoryResponse,
+  WorkoutHistoryOptions,
+  WorkoutEntry,
+  WorkoutPagination,
+  PrepareAttestationResponse,
+  ConfirmAttestationResponse,
+} from './types';
