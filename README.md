@@ -26,10 +26,11 @@ console.log(user.trustTier);    // 'GOLD'
 console.log(user.totalSteps);   // steps since this app connected (not lifetime total)
 console.log(user.percentile);   // 85
 
-// Get detailed data
-const data = await stephub.getUserData('telegram_12345', ['READ_STEPS', 'READ_TRUST_TIER']);
-console.log(data.data.steps);      // steps since this app connected (not lifetime total)
-console.log(data.data.trustTier);  // 'GOLD'
+// Get detailed data — response is nested: { userId, data: { ... }, usedPermissions }
+const result = await stephub.getUserData('telegram_12345', ['READ_STEPS', 'READ_TRUST_TIER']);
+console.log(result.data.steps);      // steps since this app connected (not lifetime total)
+console.log(result.data.trustTier);  // 'GOLD'
+console.log(result.usedPermissions); // ['READ_STEPS', 'READ_TRUST_TIER']
 ```
 
 ## Privacy Boundary
@@ -179,11 +180,14 @@ console.log(confirmed.easScanUrl);     // Link to view on EAS scan
 
 ## Error Handling
 
+`StepHubError` is exported and can be used with `instanceof`:
+
 ```typescript
 import { StepHubClient, StepHubError } from '@stephubprotocol/partner-sdk';
 
 try {
-  const user = await stephub.checkUser('telegram_12345');
+  const result = await stephub.getUserData('telegram_12345', ['READ_STEPS']);
+  console.log(result.data.steps); // access via result.data, not result directly
 } catch (error) {
   if (error instanceof StepHubError) {
     console.error(error.statusCode);    // 401, 403, 404, etc.
@@ -191,6 +195,13 @@ try {
   }
 }
 ```
+
+| Status | Meaning |
+|--------|---------|
+| 401 | Invalid clientId / clientSecret |
+| 403 | User hasn't granted the requested scope |
+| 404 | User not found or not connected |
+| 429 | Rate limited (check `retryAfter`) |
 
 ## Requirements
 

@@ -1,6 +1,6 @@
 {
   "name": "@stephubprotocol/partner-sdk",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "TypeScript SDK for the StepHub Partners API — integrate physical activity data into your app",
   "license": "MIT",
   "main": "./dist/index.js",

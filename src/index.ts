@@ -1,4 +1,4 @@
-export { StepHubClient } from './client';
+export { StepHubClient, StepHubError } from './client';
 export type {
   StepHubClientConfig,
   CheckUserResponse,
