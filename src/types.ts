@@ -31,7 +31,7 @@ export interface CheckUserResponse {
   trustTier?: TrustTier;
   /** Account age in days */
   accountAgeDays?: number;
-  /** Total steps all time (requires READ_STEPS permission) */
+  /** Total steps since this app was connected (requires READ_STEPS permission) */
   totalSteps?: number;
   /** Average daily steps last 30 days (requires READ_STEPS permission) */
   avgDailySteps?: number;
@@ -60,7 +60,9 @@ export interface UserDataResponse {
   userId: string;
   /** Data based on granted permissions */
   data: {
+    /** Total steps since this app was connected (requires READ_STEPS permission) */
     steps?: number;
+    /** Total distance in meters since this app was connected (requires READ_DISTANCE permission) */
     distance?: number;
     trustScore?: number;
     trustTier?: TrustTier;

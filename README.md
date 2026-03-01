@@ -1,17 +1,17 @@
-# @stephub/partner-sdk
+# @stephubprotocol/partner-sdk
 
 TypeScript SDK for the **StepHub Partners API** — integrate verified physical activity data into your application.
 
 ## Install
 
 ```bash
-npm install @stephub/partner-sdk
+npm install @stephubprotocol/partner-sdk
 ```
 
 ## Quick Start
 
 ```typescript
-import { StepHubClient } from '@stephub/partner-sdk';
+import { StepHubClient } from '@stephubprotocol/partner-sdk';
 
 const stephub = new StepHubClient({
   apiUrl: 'https://api.stephubprotocol.xyz',
@@ -23,14 +23,29 @@ const stephub = new StepHubClient({
 const user = await stephub.checkUser('telegram_12345');
 console.log(user.hasAccess);    // true
 console.log(user.trustTier);    // 'GOLD'
-console.log(user.totalSteps);   // 1234567
+console.log(user.totalSteps);   // steps since this app connected (not lifetime total)
 console.log(user.percentile);   // 85
 
 // Get detailed data
 const data = await stephub.getUserData('telegram_12345', ['READ_STEPS', 'READ_TRUST_TIER']);
-console.log(data.data.steps);      // 1234567
+console.log(data.data.steps);      // steps since this app connected (not lifetime total)
 console.log(data.data.trustTier);  // 'GOLD'
 ```
+
+## Privacy Boundary
+
+All step and distance data returned by the API is scoped to the period **since the user connected to your specific app** — not the user's all-time lifetime total.
+
+| Field | Endpoint | What it contains |
+|-------|----------|-----------------|
+| `totalSteps` | `checkUser` | Steps since this app was connected |
+| `avgDailySteps` | `checkUser` | Avg steps/day over the last 30 days (bounded by connection date) |
+| `weeklySteps` | `checkUser` | Steps in the current Mon–Sun week (bounded by connection date) |
+| `data.steps` | `getUserData` | Steps since this app was connected |
+| `data.distance` | `getUserData` | Distance in meters since this app was connected |
+| `days[].steps` | `getDailyStats` | Steps for that specific calendar day |
+
+For per-day breakdown use `getDailyStats` — it returns individual days so you can sum any range you need.
 
 ## Connection Flow
 
@@ -165,7 +180,7 @@ console.log(confirmed.easScanUrl);     // Link to view on EAS scan
 ## Error Handling
 
 ```typescript
-import { StepHubClient, StepHubError } from '@stephub/partner-sdk';
+import { StepHubClient, StepHubError } from '@stephubprotocol/partner-sdk';
 
 try {
   const user = await stephub.checkUser('telegram_12345');
