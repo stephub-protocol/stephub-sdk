@@ -103,6 +103,107 @@ export interface ConnectionStatusResponse {
   rejectedMessage?: string;
 }
 
+export interface StepHubProfileData {
+  steps?: number;
+  distance?: number;
+  trustScore?: number;
+  trustTier?: TrustTier;
+  workouts?: {
+    total: number;
+    last7Days: number;
+    last30Days: number;
+    byType: Record<string, number>;
+  };
+}
+
+export interface StepHubProfile extends StepHubProfileData {
+  userId: string;
+  usedPermissions: string[];
+}
+
+export interface StepHubAccess {
+  exists: boolean;
+  hasAccess: boolean;
+  trustScore?: number;
+  trustTier?: TrustTier;
+  accountAgeDays?: number;
+  totalSteps?: number;
+  avgDailySteps?: number;
+  rank?: number;
+  totalUsers?: number;
+  percentile?: number;
+  weeklySteps?: number;
+  weeklyDelta?: number;
+  stale?: boolean;
+  lastSyncAt?: string;
+  permissions?: string[];
+  connectionStatus?: string;
+}
+
+export interface StepHubConnection {
+  connectionCode: string;
+  deeplink: string;
+  qrCode: string;
+  expiresAt: string;
+  requestId: string;
+}
+
+export interface StepHubStatsSummary {
+  steps: number;
+  distance: number;
+  trustScore?: number;
+  trustTier?: TrustTier;
+  rank?: number;
+  percentile?: number;
+}
+
+export interface StepHubUsersApi {
+  getAccess(userId: string): Promise<StepHubAccess>;
+  getProfile(userId: string, scopes: Scope[]): Promise<StepHubProfile>;
+  getSummary(userId: string, scopes: Scope[]): Promise<StepHubUserSummary>;
+  getSteps(userId: string): Promise<number>;
+  getDistance(userId: string): Promise<number>;
+  getTrust(userId: string): Promise<Pick<StepHubAccess, 'trustScore' | 'trustTier' | 'rank' | 'percentile'>>;
+  getStats(userId: string): Promise<StepHubStatsSummary>;
+  ensureAccess(userId: string): Promise<StepHubAccess>;
+}
+
+export interface StepHubConnectionsApi {
+  start(externalUserId: string, permissions: Scope[]): Promise<StepHubConnection>;
+  status(requestId: string): Promise<ConnectionStatusResponse>;
+  wait(requestId: string, options?: WaitForConnectionOptions): Promise<ConnectionStatusResponse>;
+  startAndWait(
+    externalUserId: string,
+    permissions: Scope[],
+    options?: WaitForConnectionOptions,
+  ): Promise<ConnectionStatusResponse>;
+}
+
+export interface StepHubAttestationsApi {
+  prepare(userId: string): Promise<PrepareAttestationResponse>;
+  confirm(userId: string, attestationUid: string, txHash: string): Promise<ConfirmAttestationResponse>;
+}
+
+export interface StepHubErrorDetails {
+  message: string;
+  retryAfter?: number;
+  raw?: unknown;
+}
+
+export interface WaitForConnectionOptions {
+  /** Polling interval in ms (default: 2000) */
+  intervalMs?: number;
+  /** Max wait time in ms (default: 300000) */
+  timeoutMs?: number;
+  /** Optional abort signal */
+  signal?: AbortSignal;
+}
+
+export interface StepHubUserSummary {
+  access: StepHubAccess;
+  profile: StepHubProfile;
+}
+
 // ── Nudge ──
 
 export interface NudgeResponse {

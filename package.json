@@ -1,6 +1,6 @@
 {
   "name": "@stephubprotocol/partner-sdk",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "TypeScript SDK for the StepHub Partners API — integrate physical activity data into your app",
   "license": "MIT",
   "main": "./dist/index.js",
@@ -8,9 +8,9 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.js"
     }
   },
   "files": [

@@ -19,18 +19,29 @@ const stephub = new StepHubClient({
   clientSecret: 'your_secret',
 });
 
-// Check if user exists and has access
-const user = await stephub.checkUser('telegram_12345');
-console.log(user.hasAccess);    // true
-console.log(user.trustTier);    // 'GOLD'
-console.log(user.totalSteps);   // steps since this app connected (not lifetime total)
-console.log(user.percentile);   // 85
+// Namespaced API is the easiest entrypoint
+const access = await stephub.users.getAccess('telegram_12345');
+console.log(access.hasAccess);
+console.log(access.trustTier);
 
-// Get detailed data — response is nested: { userId, data: { ... }, usedPermissions }
-const result = await stephub.getUserData('telegram_12345', ['READ_STEPS', 'READ_TRUST_TIER']);
-console.log(result.data.steps);      // steps since this app connected (not lifetime total)
-console.log(result.data.trustTier);  // 'GOLD'
-console.log(result.usedPermissions); // ['READ_STEPS', 'READ_TRUST_TIER']
+const profile = await stephub.users.getProfile('telegram_12345', [
+  'READ_STEPS',
+  'READ_TRUST_TIER',
+]);
+console.log(profile.steps);
+console.log(profile.trustTier);
+
+const summary = await stephub.users.getSummary('telegram_12345', [
+  'READ_STEPS',
+  'READ_TRUST_TIER',
+]);
+console.log(summary.access.percentile);
+console.log(summary.profile.steps);
+
+const stats = await stephub.users.getStats('telegram_12345');
+console.log(stats.steps);
+console.log(stats.distance);
+console.log(stats.trustTier);
 ```
 
 ## Privacy Boundary
@@ -54,18 +65,12 @@ When a user hasn't connected their StepHub mobile app yet:
 
 ```typescript
 // 1. Request a connection code
-const conn = await stephub.requestConnection('telegram_12345', [
-  'READ_STEPS',
-  'READ_TRUST_TIER',
-]);
-
-// 2. Show QR code to user
-console.log(conn.qrCode);        // base64 PNG data URI
-console.log(conn.connectionCode); // "A5B9C2" (6-char code)
-console.log(conn.deeplink);       // "stephub://connect?code=A5B9C2"
-
-// 3. Wait for user to scan and authorize
-const status = await stephub.waitForConnection(conn.requestId);
+// 1-3. Start connection and wait in one flow
+const status = await stephub.connections.startAndWait(
+  'telegram_12345',
+  ['READ_STEPS', 'READ_TRUST_TIER'],
+  { intervalMs: 2000, timeoutMs: 300000 },
+);
 
 if (status.status === 'authorized') {
   console.log('Connected! User ID:', status.userId);
@@ -157,16 +162,21 @@ console.log(confirmed.easScanUrl);     // Link to view on EAS scan
 
 | Method | Description |
 |--------|-------------|
-| `checkUser(userId)` | Check if user exists and has granted access |
-| `getUserData(userId, scopes)` | Get user data filtered by scopes |
-| `getDailyStats(userId, options?)` | Get daily activity stats (steps, distance, kcal, flights) |
-| `getWorkoutHistory(userId, options?)` | Get paginated workout history |
-| `nudge(userId)` | Send sync nudge to user's device |
-| `prepareAttestation(userId)` | Prepare on-chain attestation data |
-| `confirmAttestation(userId, attestationUid, txHash)` | Confirm attestation after on-chain tx |
-| `requestConnection(externalUserId, permissions)` | Request a connection code (QR + deeplink) |
-| `getConnectionStatus(requestId)` | Poll connection status |
-| `waitForConnection(requestId, intervalMs?, timeoutMs?)` | Poll until authorized or expired |
+| `users.getAccess(userId)` | Check if user exists and has granted access |
+| `users.ensureAccess(userId)` | Throw a typed SDK error if the user is missing or not connected |
+| `users.getProfile(userId, scopes)` | Get a flattened profile shape for normal app usage |
+| `users.getSummary(userId, scopes)` | Fetch access + profile together |
+| `users.getSteps(userId)` | Get just the user's steps |
+| `users.getDistance(userId)` | Get just the user's distance |
+| `users.getTrust(userId)` | Get trust score / tier / rank summary |
+| `users.getStats(userId)` | Get steps + distance + trust summary in one call |
+| `connections.start(externalUserId, permissions)` | Request a connection code (QR + deeplink) |
+| `connections.status(requestId)` | Poll connection status |
+| `connections.wait(requestId, options?)` | Poll until authorized or expired |
+| `connections.startAndWait(externalUserId, permissions, options?)` | Start a connection flow and wait for the final status |
+| `attestations.prepare(userId)` | Prepare on-chain attestation data |
+| `attestations.confirm(userId, attestationUid, txHash)` | Confirm attestation after on-chain tx |
+| Raw methods (`checkUser`, `getUserData`, `requestConnection`, ...) | Still available for lower-level usage |
 
 ### Scopes
 
@@ -186,12 +196,17 @@ console.log(confirmed.easScanUrl);     // Link to view on EAS scan
 import { StepHubClient, StepHubError } from '@stephubprotocol/partner-sdk';
 
 try {
-  const result = await stephub.getUserData('telegram_12345', ['READ_STEPS']);
-  console.log(result.data.steps); // access via result.data, not result directly
+  const profile = await stephub.users.getProfile('telegram_12345', ['READ_STEPS']);
+  console.log(profile.steps);
 } catch (error) {
   if (error instanceof StepHubError) {
-    console.error(error.statusCode);    // 401, 403, 404, etc.
-    console.error(error.responseBody);  // Raw response body
+    if (error.isForbidden()) {
+      console.error('User has not granted the required scopes yet');
+    }
+
+    if (error.isRateLimited()) {
+      console.error(error.details().retryAfter);
+    }
   }
 }
 ```
