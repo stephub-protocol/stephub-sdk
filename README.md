@@ -1,17 +1,17 @@
-# @stephubprotocol/partner-sdk
+# @stephub/partner-sdk
 
 TypeScript SDK for the **StepHub Partners API** — integrate verified physical activity data into your application.
 
 ## Install
 
 ```bash
-npm install @stephubprotocol/partner-sdk
+npm install @stephub/partner-sdk
 ```
 
 ## Quick Start
 
 ```typescript
-import { StepHubClient } from '@stephubprotocol/partner-sdk';
+import { StepHubClient } from '@stephub/partner-sdk';
 
 const stephub = new StepHubClient({
   apiUrl: 'https://api.stephubprotocol.xyz',
@@ -223,7 +223,7 @@ console.log(badge.expectedItemAddress); // deterministic soulbound badge address
 `StepHubError` is exported and can be used with `instanceof`:
 
 ```typescript
-import { StepHubClient, StepHubError } from '@stephubprotocol/partner-sdk';
+import { StepHubClient, StepHubError } from '@stephub/partner-sdk';
 
 try {
   const profile = await stephub.users.getProfile('telegram_12345', ['READ_STEPS']);
