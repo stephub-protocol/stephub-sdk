@@ -12,6 +12,8 @@ import type {
   WorkoutHistoryResponse,
   PrepareAttestationResponse,
   ConfirmAttestationResponse,
+  PrepareTonBadgeResponse,
+  ConnectionRequestOptions,
   WaitForConnectionOptions,
   StepHubUserSummary,
   StepHubAccess,
@@ -20,6 +22,7 @@ import type {
   StepHubUsersApi,
   StepHubConnectionsApi,
   StepHubAttestationsApi,
+  StepHubTonBadgesApi,
   StepHubErrorDetails,
   StepHubStatsSummary,
 } from './types';
@@ -54,6 +57,7 @@ export class StepHubClient {
   readonly users: StepHubUsersApi;
   readonly connections: StepHubConnectionsApi;
   readonly attestations: StepHubAttestationsApi;
+  readonly tonBadges: StepHubTonBadgesApi;
 
   constructor(config: StepHubClientConfig) {
     this.apiUrl = config.apiUrl.replace(/\/$/, '');
@@ -73,7 +77,8 @@ export class StepHubClient {
     };
 
     this.connections = {
-      start: (externalUserId, permissions) => this.connectUser(externalUserId, permissions),
+      start: (externalUserId, permissions, options) =>
+        this.connectUser(externalUserId, permissions, options),
       status: (requestId) => this.getConnectionStatus(requestId),
       wait: (requestId, options) => this.waitForAuthorization(requestId, options),
       startAndWait: (externalUserId, permissions, options) =>
@@ -84,6 +89,10 @@ export class StepHubClient {
       prepare: (userId) => this.prepareAttestation(userId),
       confirm: (userId, attestationUid, txHash) =>
         this.confirmAttestation(userId, attestationUid, txHash),
+    };
+
+    this.tonBadges = {
+      prepare: (userId, tonAddress) => this.prepareTonBadge(userId, tonAddress),
     };
   }
 
@@ -104,11 +113,21 @@ export class StepHubClient {
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
     const url = `${this.apiUrl}${path}`;
 
-    const response = await fetch(url, {
-      ...init,
-      headers: { ...this.headers, ...init?.headers },
-      signal: AbortSignal.timeout(this.timeout),
-    });
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        ...init,
+        headers: { ...this.headers, ...init?.headers },
+        signal: AbortSignal.timeout(this.timeout),
+      });
+    } catch (error) {
+      throw new StepHubError(
+        `StepHub API request failed: ${error instanceof Error ? error.message : 'network error'}`,
+        0,
+        '',
+        error,
+      );
+    }
 
     if (!response.ok) {
       const body = await response.text().catch(() => '');
@@ -236,6 +255,16 @@ export class StepHubClient {
     });
   }
 
+  async prepareTonBadge(
+    userId: string,
+    tonAddress: string,
+  ): Promise<PrepareTonBadgeResponse> {
+    return this.request('/api/v1/partners/ton-badge/prepare', {
+      method: 'POST',
+      body: JSON.stringify({ userId, tonAddress }),
+    });
+  }
+
   // ── Connections API ──
 
   /**
@@ -251,10 +280,15 @@ export class StepHubClient {
   async requestConnection(
     externalUserId: string,
     permissions: Scope[],
+    options?: ConnectionRequestOptions,
   ): Promise<ConnectionRequest> {
     return this.request('/api/v1/connections/request', {
       method: 'POST',
-      body: JSON.stringify({ externalUserId, permissions }),
+      body: JSON.stringify({
+        externalUserId,
+        permissions,
+        ...(options?.walletAddress ? { walletAddress: options.walletAddress } : {}),
+      }),
     });
   }
 
@@ -333,8 +367,9 @@ export class StepHubClient {
   async connectUser(
     externalUserId: string,
     permissions: Scope[],
+    options?: ConnectionRequestOptions,
   ): Promise<StepHubConnection> {
-    return this.requestConnection(externalUserId, permissions);
+    return this.requestConnection(externalUserId, permissions, options);
   }
 
   async waitForAuthorization(
@@ -347,10 +382,11 @@ export class StepHubClient {
   async startAndWaitForConnection(
     externalUserId: string,
     permissions: Scope[],
-    options?: WaitForConnectionOptions,
+    options?: WaitForConnectionOptions & ConnectionRequestOptions,
   ): Promise<ConnectionStatusResponse> {
-    const connection = await this.connectUser(externalUserId, permissions);
-    return this.waitForAuthorization(connection.requestId, options);
+    const { walletAddress, ...waitOptions } = options ?? {};
+    const connection = await this.connectUser(externalUserId, permissions, { walletAddress });
+    return this.waitForAuthorization(connection.requestId, waitOptions);
   }
 
   async getUserSummary(userId: string, scopes: Scope[]): Promise<StepHubUserSummary> {
@@ -422,6 +458,7 @@ export class StepHubError extends Error {
     message: string,
     public readonly statusCode: number,
     public readonly responseBody: string,
+    public readonly cause?: unknown,
   ) {
     super(message);
     this.name = 'StepHubError';

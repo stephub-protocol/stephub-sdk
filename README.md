@@ -72,6 +72,13 @@ const status = await stephub.connections.startAndWait(
   { intervalMs: 2000, timeoutMs: 300000 },
 );
 
+// Wallet-aware partner flows can attach an optional wallet address to the request.
+const walletAwareConnection = await stephub.connections.start(
+  'farcaster_6841',
+  ['READ_STEPS', 'READ_TRUST_TIER'],
+  { walletAddress: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e' },
+);
+
 if (status.status === 'authorized') {
   console.log('Connected! User ID:', status.userId);
 }
@@ -117,7 +124,9 @@ if (user.stale) {
 }
 ```
 
-## Attestation (On-Chain Proof)
+## On-Chain Proofs
+
+### Base/EVM Attestation
 
 Create verifiable on-chain proofs of physical activity using EAS (Ethereum Attestation Service):
 
@@ -147,6 +156,25 @@ console.log(confirmed.attestationUid); // On-chain attestation UID
 console.log(confirmed.easScanUrl);     // Link to view on EAS scan
 ```
 
+### TON Badge
+
+Prepare a TonConnect-ready soulbound badge mint payload for a user's TON wallet:
+
+```typescript
+const badge = await stephub.tonBadges.prepare(
+  'telegram_12345',
+  'UQAol-7LDQ-Pt0G0xsut1vvgBikCiTrx9QCyyPif4QTRJgRf',
+);
+
+console.log(badge.collectionAddress);   // TON collection destination
+console.log(badge.amount);              // nano-TON amount to attach
+console.log(badge.payload);             // base64 BoC for messages[].payload
+console.log(badge.expectedItemAddress); // deterministic soulbound badge address
+
+// Forward into TonConnect from your app:
+// messages: [{ address: badge.collectionAddress, amount: badge.amount, payload: badge.payload }]
+```
+
 ## API Reference
 
 ### `new StepHubClient(config)`
@@ -170,13 +198,15 @@ console.log(confirmed.easScanUrl);     // Link to view on EAS scan
 | `users.getDistance(userId)` | Get just the user's distance |
 | `users.getTrust(userId)` | Get trust score / tier / rank summary |
 | `users.getStats(userId)` | Get steps + distance + trust summary in one call |
-| `connections.start(externalUserId, permissions)` | Request a connection code (QR + deeplink) |
+| `connections.start(externalUserId, permissions, options?)` | Request a connection code (QR + deeplink); optional `walletAddress` for wallet-aware flows |
 | `connections.status(requestId)` | Poll connection status |
 | `connections.wait(requestId, options?)` | Poll until authorized or expired |
-| `connections.startAndWait(externalUserId, permissions, options?)` | Start a connection flow and wait for the final status |
-| `attestations.prepare(userId)` | Prepare on-chain attestation data |
-| `attestations.confirm(userId, attestationUid, txHash)` | Confirm attestation after on-chain tx |
-| Raw methods (`checkUser`, `getUserData`, `requestConnection`, ...) | Still available for lower-level usage |
+| `connections.startAndWait(externalUserId, permissions, options?)` | Start a connection flow and wait for the final status; accepts wait options and optional `walletAddress` |
+| `attestations.prepare(userId)` | Prepare Base/EVM EAS attestation data |
+| `attestations.confirm(userId, attestationUid, txHash)` | Confirm Base/EVM attestation after on-chain tx |
+| `tonBadges.prepare(userId, tonAddress)` | Prepare TON soulbound badge mint payload for TonConnect |
+| `requestConnection(externalUserId, permissions, options?)` | `POST /api/v1/connections/request`, including optional `walletAddress` |
+| Raw methods (`checkUser`, `getUserData`, `prepareTonBadge`, ...) | Still available for lower-level usage |
 
 ### Scopes
 
@@ -217,6 +247,7 @@ try {
 | 403 | User hasn't granted the requested scope |
 | 404 | User not found or not connected |
 | 429 | Rate limited (check `retryAfter`) |
+| 0 | Network failure or request timeout before an HTTP response was received |
 
 ## Requirements
 

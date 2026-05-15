@@ -77,12 +77,17 @@ export interface UserDataResponse {
   usedPermissions: string[];
 }
 
+export interface ConnectionRequestOptions {
+  /** Optional wallet address to associate with this connection request for wallet-aware partner flows */
+  walletAddress?: string;
+}
+
 export interface ConnectionRequest {
   /** 6-character connection code (expires in 5 minutes) */
   connectionCode: string;
   /** Deep link for mobile app (stephub://connect?code=XXXXXX) */
   deeplink: string;
-  /** QR code as base64 data URI (PNG) */
+  /** QR code as a base64 SVG data URI */
   qrCode: string;
   /** Expiration timestamp (ISO 8601) */
   expiresAt: string;
@@ -169,19 +174,26 @@ export interface StepHubUsersApi {
 }
 
 export interface StepHubConnectionsApi {
-  start(externalUserId: string, permissions: Scope[]): Promise<StepHubConnection>;
+  start(externalUserId: string, permissions: Scope[], options?: ConnectionRequestOptions): Promise<StepHubConnection>;
   status(requestId: string): Promise<ConnectionStatusResponse>;
   wait(requestId: string, options?: WaitForConnectionOptions): Promise<ConnectionStatusResponse>;
   startAndWait(
     externalUserId: string,
     permissions: Scope[],
-    options?: WaitForConnectionOptions,
+    options?: WaitForConnectionOptions & ConnectionRequestOptions,
   ): Promise<ConnectionStatusResponse>;
 }
 
 export interface StepHubAttestationsApi {
+  /** Prepare Base/EVM EAS attestation data */
   prepare(userId: string): Promise<PrepareAttestationResponse>;
+  /** Confirm Base/EVM EAS attestation after the on-chain tx is mined */
   confirm(userId: string, attestationUid: string, txHash: string): Promise<ConfirmAttestationResponse>;
+}
+
+export interface StepHubTonBadgesApi {
+  /** Prepare a TON soulbound badge mint payload for TonConnect */
+  prepare(userId: string, tonAddress: string): Promise<PrepareTonBadgeResponse>;
 }
 
 export interface StepHubErrorDetails {
@@ -338,4 +350,29 @@ export interface ConfirmAttestationResponse {
   attestationUid: string;
   /** Link to view attestation on EAS scan */
   easScanUrl: string;
+}
+
+// ── TON Badge ──
+
+export interface PrepareTonBadgeResponse {
+  /** TON collection contract address — destination of the TonConnect transaction */
+  collectionAddress: string;
+  /** Total nano-TON the user must attach */
+  amount: string;
+  /** Base64-encoded BoC of the MintBadge body for TonConnect messages[].payload */
+  payload: string;
+  /** Trust score snapshot at prepare time (0-100) */
+  trustScore: number;
+  /** Trust tier snapshot */
+  trustTier: TrustTier | string;
+  /** Account age in days at prepare time */
+  accountAgeDays: number;
+  /** Deterministic future address of the soulbound badge item contract */
+  expectedItemAddress: string;
+  /** TonConnect transaction valid_until offset, in seconds */
+  validUntilSeconds: number;
+  /** Pending StepHub row ID for server-side tracking */
+  pendingId: string;
+  /** Referral registration transaction hash, or null if referral was skipped */
+  referralTxHash?: string | null;
 }

@@ -18,6 +18,8 @@ export type {
   WorkoutPagination,
   PrepareAttestationResponse,
   ConfirmAttestationResponse,
+  PrepareTonBadgeResponse,
+  ConnectionRequestOptions,
   WaitForConnectionOptions,
   StepHubUserSummary,
   StepHubAccess,
@@ -27,6 +29,7 @@ export type {
   StepHubUsersApi,
   StepHubConnectionsApi,
   StepHubAttestationsApi,
+  StepHubTonBadgesApi,
   StepHubErrorDetails,
   StepHubStatsSummary,
 } from './types';
