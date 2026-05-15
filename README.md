@@ -84,11 +84,16 @@ if (status.status === 'authorized') {
 }
 ```
 
+Possible `status.status` values: `pending`, `authorized`, `rejected`, `expired`, and
+`cancelled` — the last is returned **only** by the SDK when the wait is aborted via an
+`AbortSignal`, so you can distinguish a user-driven cancel from a server-side timeout
+(`expired`).
+
 ## Daily Stats & Workout History
 
 ```typescript
 // Get daily activity stats (last 7 days)
-const stats = await stephub.getDailyStats('telegram_12345', {
+const stats = await stephub.users.getDailyStats('telegram_12345', {
   startDate: '2026-02-11',
   endDate: '2026-02-18',
 });
@@ -98,7 +103,7 @@ for (const day of stats.days) {
 }
 
 // Get workout history (paginated)
-const workouts = await stephub.getWorkoutHistory('telegram_12345', {
+const workouts = await stephub.users.getWorkoutHistory('telegram_12345', {
   limit: 10,
   offset: 0,
 });
@@ -198,6 +203,8 @@ console.log(badge.expectedItemAddress); // deterministic soulbound badge address
 | `users.getDistance(userId)` | Get just the user's distance |
 | `users.getTrust(userId)` | Get trust score / tier / rank summary |
 | `users.getStats(userId)` | Get steps + distance + trust summary in one call |
+| `users.getDailyStats(userId, options?)` | Per-day activity breakdown (steps, distance, calories, flights) |
+| `users.getWorkoutHistory(userId, options?)` | Paginated workout history (requires `READ_WORKOUT_HISTORY`) |
 | `connections.start(externalUserId, permissions, options?)` | Request a connection code (QR + deeplink); optional `walletAddress` for wallet-aware flows |
 | `connections.status(requestId)` | Poll connection status |
 | `connections.wait(requestId, options?)` | Poll until authorized or expired |

@@ -18,7 +18,13 @@ export type Scope =
   | 'READ_WORKOUTS'
   | 'READ_WORKOUT_HISTORY';
 
-export type ConnectionStatus = 'pending' | 'authorized' | 'rejected' | 'expired';
+export type ConnectionStatus =
+  | 'pending'
+  | 'authorized'
+  | 'rejected'
+  | 'expired'
+  /** Client-side only: the wait was aborted via an AbortSignal (never returned by the API) */
+  | 'cancelled';
 
 export interface CheckUserResponse {
   /** User exists in StepHub */
@@ -171,6 +177,10 @@ export interface StepHubUsersApi {
   getTrust(userId: string): Promise<Pick<StepHubAccess, 'trustScore' | 'trustTier' | 'rank' | 'percentile'>>;
   getStats(userId: string): Promise<StepHubStatsSummary>;
   ensureAccess(userId: string): Promise<StepHubAccess>;
+  /** Per-day activity breakdown (steps, distance, calories, flights) */
+  getDailyStats(userId: string, options?: DailyStatsOptions): Promise<DailyStatsResponse>;
+  /** Paginated workout history (requires READ_WORKOUT_HISTORY) */
+  getWorkoutHistory(userId: string, options?: WorkoutHistoryOptions): Promise<WorkoutHistoryResponse>;
 }
 
 export interface StepHubConnectionsApi {
@@ -224,7 +234,7 @@ export interface NudgeResponse {
   /** Number of devices the nudge was sent to */
   devicesSent: number;
   /** Reason if nudge was not sent */
-  reason?: string;
+  reason?: 'rate_limited' | 'no_push_tokens';
   /** Seconds to wait before retrying */
   retryAfter?: number;
 }

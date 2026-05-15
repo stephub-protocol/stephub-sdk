@@ -74,6 +74,8 @@ export class StepHubClient {
       getTrust: (userId) => this.getTrust(userId),
       getStats: (userId) => this.getStats(userId),
       ensureAccess: (userId) => this.ensureAccess(userId),
+      getDailyStats: (userId, options) => this.getDailyStats(userId, options),
+      getWorkoutHistory: (userId, options) => this.getWorkoutHistory(userId, options),
     };
 
     this.connections = {
@@ -324,7 +326,7 @@ export class StepHubClient {
 
     while (Date.now() < deadline) {
       if (abortSignal?.aborted) {
-        return { status: 'expired' };
+        return { status: 'cancelled' };
       }
 
       const status = await this.getConnectionStatus(requestId);
