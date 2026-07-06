@@ -64,8 +64,7 @@ For per-day breakdown use `getDailyStats` — it returns individual days so you 
 When a user hasn't connected their StepHub mobile app yet:
 
 ```typescript
-// 1. Request a connection code
-// 1-3. Start connection and wait in one flow
+// Start a connection and wait for the result in one call
 const status = await stephub.connections.startAndWait(
   'telegram_12345',
   ['READ_STEPS', 'READ_TRUST_TIER'],
@@ -87,7 +86,8 @@ if (status.status === 'authorized') {
 Possible `status.status` values: `pending`, `authorized`, `rejected`, `expired`, and
 `cancelled` — the last is returned **only** by the SDK when the wait is aborted via an
 `AbortSignal`, so you can distinguish a user-driven cancel from a server-side timeout
-(`expired`).
+(`expired`). When the status is `rejected`, the response may also carry `rejectedReason`
+and a human-readable `rejectedMessage`.
 
 ## Daily Stats & Workout History
 
@@ -224,6 +224,24 @@ console.log(badge.expectedItemAddress); // deterministic soulbound badge address
 | `READ_TRUST_TIER` | Access trust score and tier |
 | `READ_WORKOUTS` | Access workout summary |
 | `READ_WORKOUT_HISTORY` | Access detailed workout history |
+
+## Webhooks
+
+Instead of (or in addition to) polling `connections.status()`, the StepHub backend can
+deliver connection lifecycle events to a webhook endpoint registered for your app:
+
+| Event | When it fires |
+|-------|---------------|
+| `connection.authorized` | The user approved the connection in the mobile app |
+| `connection.revoked` | The user revoked your app's access |
+
+Every delivery is signed: the `X-StepHub-Signature` header contains an **HMAC-SHA256**
+signature of the raw request body, keyed with your `clientSecret`. Verify it by
+recomputing the HMAC over the raw (unparsed) body with your `clientSecret` and comparing
+it to the header value before trusting the payload.
+
+The SDK currently does not ship a webhook verification helper — handle verification in
+your HTTP layer.
 
 ## Error Handling
 
