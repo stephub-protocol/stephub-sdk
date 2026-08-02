@@ -53,6 +53,9 @@ export class StepHubClient {
   private readonly clientId: string;
   private readonly clientSecret: string;
   private readonly timeout: number;
+  private readonly firstRequestTimeout: number;
+  /** Flips after the first completed request, warm or failed. */
+  private warmedUp = false;
 
   readonly users: StepHubUsersApi;
   readonly connections: StepHubConnectionsApi;
@@ -63,7 +66,8 @@ export class StepHubClient {
     this.apiUrl = config.apiUrl.replace(/\/$/, '');
     this.clientId = config.clientId;
     this.clientSecret = config.clientSecret;
-    this.timeout = config.timeout ?? 10_000;
+    this.timeout = config.timeout ?? 30_000;
+    this.firstRequestTimeout = config.firstRequestTimeout ?? 45_000;
 
     this.users = {
       getAccess: (userId) => this.getAccess(userId),
@@ -115,20 +119,39 @@ export class StepHubClient {
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
     const url = `${this.apiUrl}${path}`;
 
+    // The first call of a process pays for DNS, TCP and the TLS handshake with
+    // nothing cached; everything after reuses them. Measured against production
+    // that difference is 5-34s versus 110ms, so the two get separate budgets
+    // rather than one that is wrong for both.
+    const budget = this.warmedUp ? this.timeout : this.firstRequestTimeout;
+
     let response: Response;
     try {
       response = await fetch(url, {
         ...init,
         headers: { ...this.headers, ...init?.headers },
-        signal: AbortSignal.timeout(this.timeout),
+        signal: AbortSignal.timeout(budget),
       });
     } catch (error) {
+      // AbortSignal.timeout rejects with a TimeoutError DOMException. Without
+      // separating it, a timeout and a refused connection both surfaced as
+      // statusCode 0 and partners could not tell "retry later" from "wrong
+      // URL / service down".
+      const timedOut =
+        error instanceof Error &&
+        (error.name === 'TimeoutError' || error.name === 'AbortError');
+
       throw new StepHubError(
-        `StepHub API request failed: ${error instanceof Error ? error.message : 'network error'}`,
+        timedOut
+          ? `StepHub API request timed out after ${budget}ms`
+          : `StepHub API request failed: ${error instanceof Error ? error.message : 'network error'}`,
         0,
         '',
         error,
+        timedOut,
       );
+    } finally {
+      this.warmedUp = true;
     }
 
     if (!response.ok) {
@@ -461,9 +484,18 @@ export class StepHubError extends Error {
     public readonly statusCode: number,
     public readonly responseBody: string,
     public readonly cause?: unknown,
+    private readonly timedOut = false,
   ) {
     super(message);
     this.name = 'StepHubError';
+  }
+
+  /**
+   * The request exceeded its time budget, as opposed to being refused or
+   * failing to resolve. Both used to arrive as statusCode 0.
+   */
+  isTimeout(): boolean {
+    return this.timedOut;
   }
 
   isUnauthorized(): boolean {

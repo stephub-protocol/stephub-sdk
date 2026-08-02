@@ -189,7 +189,25 @@ console.log(badge.expectedItemAddress); // deterministic soulbound badge address
 | `apiUrl` | `string` | StepHub API base URL (`https://api.stephubprotocol.xyz`) |
 | `clientId` | `string` | Your app's client ID |
 | `clientSecret` | `string` | Your app's client secret |
-| `timeout` | `number` | Request timeout in ms (default: 10000) |
+| `timeout` | `number` | Request timeout in ms once warm (default: 30000) |
+| `firstRequestTimeout` | `number` | Timeout in ms for this client's first request (default: 45000) |
+
+#### Why two timeouts
+
+The first request of a process pays for DNS, TCP and the TLS handshake with
+nothing cached. Measured against production, that cold path took **5-34s**
+while established connections settle at **110-120ms**. A single 10s budget
+therefore failed exactly one call — the first one after every deploy, which is
+also when the service is watched most closely.
+
+If you want that cost paid before real traffic arrives, warm the client at
+startup:
+
+```typescript
+// Fire and forget at boot — the first user request then rides a warm connection
+stephub.users.getAccess('warmup').catch(() => {});
+```
+
 
 ### Methods
 
@@ -273,6 +291,19 @@ try {
 | 404 | User not found or not connected |
 | 429 | Rate limited (check `retryAfter`) |
 | 0 | Network failure or request timeout before an HTTP response was received |
+
+Use `error.isTimeout()` to tell the two apart — a timeout is worth retrying,
+a refused connection or bad URL is not:
+
+```typescript
+try {
+  await stephub.users.getAccess(userId);
+} catch (error) {
+  if (error instanceof StepHubError && error.isTimeout()) {
+    // Slow cold path or a stalled connection — retrying is reasonable
+  }
+}
+```
 
 ## Requirements
 
