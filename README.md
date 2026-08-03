@@ -1,6 +1,41 @@
 # @stephub/partner-sdk
 
-TypeScript SDK for the **StepHub Partners API** — integrate verified physical activity data into your application.
+TypeScript SDK for the **StepHub Partners API**.
+
+## What this gives you
+
+StepHub turns a phone's step data into something you can build on: activity that
+came from a real device, with a signal telling you how much to trust it.
+
+Your users connect their StepHub app to yours once. After that you can read:
+
+- **Steps, distance, calories and floors** — per day or as totals, scoped to
+  the period since they connected to *your* app.
+- **A trust tier and score** (`DIAMOND` → `WOOD`) derived from where the data
+  came from: hardware-attested device, first-party health source, third-party
+  app, or manual entry. This is the part that is hard to build yourself, and it
+  is what makes "reward people for walking" not immediately farmable.
+- **Whether the data is still flowing**, so a silent tracker does not look like
+  a lazy user.
+- **On-chain proofs** — an EAS attestation on Base or an NFT badge on TON, if
+  you want the user's activity anchored publicly.
+
+What StepHub does *not* give you: raw GPS, heart-rate streams, or anything the
+user did not grant. Every field is gated by a scope they approved.
+
+## Getting credentials
+
+You need a `clientId` and `clientSecret`. They are issued per application:
+
+1. Open **[stephubprotocol.xyz/developers](https://stephubprotocol.xyz/developers)**
+   and connect a wallet — that wallet becomes the owner of your app.
+2. Register the application. You will get `clientId`, `clientSecret` and a
+   `webhookSecret`.
+3. **Store all three immediately.** The secrets are shown once and cannot be
+   read back later; regenerating them invalidates the previous pair.
+
+The `webhookSecret` is separate from the `clientSecret` and is used only to
+verify the signature on events we send you — see [Webhooks](#webhooks).
 
 ## Install
 
@@ -374,13 +409,43 @@ deliver connection lifecycle events to a webhook endpoint registered for your ap
 | `connection.authorized` | The user approved the connection in the mobile app |
 | `connection.revoked` | The user revoked your app's access |
 
-Every delivery is signed: the `X-StepHub-Signature` header contains an **HMAC-SHA256**
-signature of the raw request body, keyed with your `clientSecret`. Verify it by
-recomputing the HMAC over the raw (unparsed) body with your `clientSecret` and comparing
-it to the header value before trusting the payload.
+### Verifying the signature
 
-The SDK currently does not ship a webhook verification helper — handle verification in
-your HTTP layer.
+Every delivery carries `X-StepHub-Signature`: an **HMAC-SHA256** of the raw
+request body, keyed with your **`webhookSecret`** — not your `clientSecret`.
+They are separate values, issued together when you register the app.
+
+Verify over the *raw* body, before any JSON parsing, and compare in constant
+time:
+
+```typescript
+import { createHmac, timingSafeEqual } from 'crypto';
+
+function isFromStepHub(rawBody: Buffer, header: string, webhookSecret: string) {
+  const expected = 'sha256=' + createHmac('sha256', webhookSecret)
+    .update(rawBody)
+    .digest('hex');
+
+  const a = Buffer.from(header);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+```
+
+Re-serialising the parsed body will not reproduce the signature — key order and
+whitespace differ. Capture the raw bytes in your HTTP layer (in Express:
+`express.raw({ type: 'application/json' })` on this route).
+
+### Delivery and retries
+
+Failed deliveries are retried five times with exponential backoff, over roughly
+ten minutes. A non-2xx response counts as a failure, so returning `200` quickly
+and doing the work afterwards is the safer pattern.
+
+Handle the same event arriving twice — a retry after a timeout on your side
+means you may already have processed it.
+
+The SDK does not ship a verification helper; the snippet above is all it takes.
 
 ## Error Handling
 
