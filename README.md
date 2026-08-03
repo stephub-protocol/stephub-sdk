@@ -231,17 +231,51 @@ There is no `distanceM` or `elevationGain` anywhere in the API.
 energy instead returns 0 kcal for someone who walked all day without logging a
 session — the number you want is already in the row you fetched.
 
-## External IDs Are Permanent
+## External IDs
 
-The `externalUserId` you pass to `connections.start` identifies that user
-forever. Do not derive it from anything that can change, and do not recompute it
-on each call — if the formula ever changes, the account stays connected while
-every read returns "user not found", with nothing failing loudly.
+`externalUserId` is **your** identifier for **your** user. StepHub stores it
+against your app and hands it back to you; it is not a StepHub account id, and
+StepHub keeps its own internal id regardless of what you send.
+
+### Use whatever you already have
+
+The `telegram_…` shapes seen elsewhere in these docs are a habit from apps that
+already key users that way — not a requirement. Send whatever is already stable
+on your side:
 
 ```typescript
-// Good: stable, taken straight from your own user record
+// All equally fine — pick whatever is already stable on your side
 await stephub.connections.start(`telegram_${user.telegramId}`, scopes);
+await stephub.connections.start(user.id, scopes);            // your own UUID
+await stephub.connections.start(`acct-${user.accountNo}`, scopes);
+```
 
+### Collisions between partners are impossible
+
+Identity is the pair **(your app, your id)**. If two different partners both
+send `1`, those are two unrelated connections belonging to two unrelated
+people — StepHub never treats them as the same user, and neither partner can
+see or reach the other's. Your ids only need to be unique **within your own
+app**, never globally.
+
+### The one value StepHub interprets
+
+A **wallet address** — EVM (`0x…`) or TON (`0:…`, `EQ…`, `UQ…`) — is the only
+kind of id StepHub resolves on its own, because an address identifies exactly
+one account no matter who sends it. Use one if that is genuinely how you
+identify the user; otherwise anything else is treated as an opaque key.
+
+Nothing else is interpreted. `telegram_…` and friends are just strings scoped
+to your app, so a numeric internal id is safe to send in any shape you like.
+
+### It must never change
+
+Whatever you choose, that value identifies the user forever. Do not derive it
+from anything mutable, and do not recompute it on each call — if the formula
+ever changes, the account stays connected while every read returns "user not
+found", with nothing failing loudly.
+
+```typescript
 // Bad: derived from data that may change, or re-prefixed each time
 await stephub.connections.start(`telegram_${buildExtId(user)}`, scopes);
 ```
