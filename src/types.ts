@@ -221,6 +221,13 @@ export interface StepHubUsersApi {
   getDailyStats(userId: string, options?: DailyStatsOptions): Promise<DailyStatsResponse>;
   /** Paginated workout history (requires READ_WORKOUT_HISTORY) */
   getWorkoutHistory(userId: string, options?: WorkoutHistoryOptions): Promise<WorkoutHistoryResponse>;
+  /**
+   * Ask the user's device to sync now, via silent push.
+   *
+   * Pairs with `dataFlowing === false`. Limited to once per hour per user;
+   * a call inside that window returns `nudged: false` with `retryAfter`.
+   */
+  nudge(userId: string): Promise<NudgeResponse>;
 }
 
 export interface StepHubConnectionsApi {

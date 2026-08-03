@@ -80,6 +80,7 @@ export class StepHubClient {
       ensureAccess: (userId) => this.ensureAccess(userId),
       getDailyStats: (userId, options) => this.getDailyStats(userId, options),
       getWorkoutHistory: (userId, options) => this.getWorkoutHistory(userId, options),
+      nudge: (userId) => this.nudge(userId),
     };
 
     this.connections = {
@@ -242,6 +243,7 @@ export class StepHubClient {
    *
    * @param userId - External user ID
    */
+  /** @deprecated Use `client.users.nudge()`. The flat and namespaced forms are identical; the namespaced one is canonical and this will be removed in 1.0. */
   async nudge(userId: string): Promise<NudgeResponse> {
     return this.request('/api/v1/partners/nudge', {
       method: 'POST',

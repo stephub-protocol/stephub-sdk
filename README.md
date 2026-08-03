@@ -124,6 +124,47 @@ All step and distance data returned by the API is scoped to the period **since t
 
 For per-day breakdown use `getDailyStats` — it returns individual days so you can sum any range you need.
 
+## What your users do
+
+Your side is only half of it — the activity data comes from the StepHub mobile
+app on the user's phone. Worth knowing before you design your onboarding, since
+it is the part you have to explain to them.
+
+**Once, before anything works:**
+
+1. **Install StepHub** —
+   [iOS](https://apps.apple.com/app/id6759161399) ·
+   [Android](https://play.google.com/store/apps/details?id=xyz.stephubprotocol.android)
+2. **Grant health access** — Apple Health on iOS, Health Connect on Android.
+   This is where the provenance comes from, and without it there is nothing to
+   verify. On Android below 14 Health Connect is a separate app the setup flow
+   will offer to install.
+
+**Every time they connect to an app like yours:**
+
+3. You call `connections.start()` and show them what it returns — a QR code, a
+   deep link, or a 6-character code (see below for which to use where).
+4. They approve in the StepHub app, seeing exactly which scopes you asked for.
+5. `startAndWait()` resolves, or your webhook fires, and their data is readable.
+
+**After that it is automatic.** The app syncs in the background; users do not
+open it daily. If a device has gone quiet, `dataFlowing` tells you, and
+`nudge()` asks it to sync now.
+
+### Which handoff to use
+
+`connections.start()` returns three forms of the same request, valid for **5
+minutes**:
+
+| Field | Use when |
+|-------|----------|
+| `qrCode` | Your app is on desktop or web — they scan with their phone |
+| `deeplink` | Your app is on the same phone — opens StepHub directly |
+| `connectionCode` | Fallback — they type six characters into StepHub |
+
+Showing the QR *and* the code side by side is the safest default: it works
+whether they are at a laptop or holding the phone your app runs on.
+
 ## Connection Flow
 
 When a user hasn't connected their StepHub mobile app yet:
@@ -181,11 +222,15 @@ console.log(`Total: ${workouts.pagination.total}, hasMore: ${workouts.pagination
 
 ## Nudge (Sync Fresh Data)
 
-```typescript
-const user = await stephub.checkUser('telegram_12345');
+Asks the user's device to sync now, via silent push. Its natural pairing is
+`dataFlowing === false`: numbers look stale, so ask the phone for fresh ones
+before telling the user anything is wrong.
 
-if (user.stale) {
-  const nudge = await stephub.nudge('telegram_12345');
+```typescript
+const user = await stephub.users.getAccess('telegram_12345');
+
+if (user.dataFlowing === false) {
+  const nudge = await stephub.users.nudge('telegram_12345');
   if (nudge.nudged) {
     console.log(`Nudge sent to ${nudge.devicesSent} device(s)`);
   } else {
@@ -193,6 +238,20 @@ if (user.stale) {
   }
 }
 ```
+
+**Limits, and what to expect:**
+
+- **Once per hour per user.** A second call inside that window returns
+  `nudged: false` with `retryAfter` in seconds. It is not an error — treat it
+  as "already asked recently".
+- **It is a request, not a guarantee.** The push wakes the app if the phone is
+  online and the OS allows it. A device that is off, out of signal, or has
+  background refresh disabled will sync when it next can.
+- **Do not poll after nudging.** Data arrives when the device syncs, typically
+  within a minute or two if it is online. Read on your next natural request, or
+  wait for the user's next action — a retry loop only burns the hourly budget.
+- `devicesSent: 0` means no device could be reached at all, most often because
+  none has a push token registered yet.
 
 ## On-Chain Proofs
 
@@ -379,6 +438,7 @@ twice in autocomplete without knowing which to pick.
 | `users.getStats(userId)` | Get steps + distance + trust summary in one call |
 | `users.getDailyStats(userId, options?)` | Per-day activity breakdown (steps, distance, calories, flights) |
 | `users.getWorkoutHistory(userId, options?)` | Paginated workout history (requires `READ_WORKOUT_HISTORY`) |
+| `users.nudge(userId)` | Ask the device to sync now — once per hour per user |
 | `connections.start(externalUserId, permissions, options?)` | Request a connection code (QR + deeplink); optional `walletAddress` for wallet-aware flows |
 | `connections.status(requestId)` | Poll connection status |
 | `connections.wait(requestId, options?)` | Poll until authorized or expired |
@@ -386,8 +446,10 @@ twice in autocomplete without knowing which to pick.
 | `attestations.prepare(userId)` | Prepare Base/EVM EAS attestation data |
 | `attestations.confirm(userId, attestationUid, txHash)` | Confirm Base/EVM attestation after on-chain tx |
 | `tonBadges.prepare(userId, tonAddress)` | Prepare TON soulbound badge mint payload for TonConnect |
-| `requestConnection(externalUserId, permissions, options?)` | `POST /api/v1/connections/request`, including optional `walletAddress` |
-| Raw methods (`checkUser`, `getUserData`, `prepareTonBadge`, ...) | Still available for lower-level usage |
+
+Flat equivalents (`client.getAccess()`, `client.nudge()`, …) still work but are
+deprecated — see above. Lower-level raw methods (`checkUser`, `getUserData`,
+`prepareTonBadge`) remain available if you need the unshaped response.
 
 ### Scopes
 
@@ -495,3 +557,13 @@ try {
 
 - Node.js >= 18 (uses native `fetch`)
 - Register your app at [StepHub Web Hub](https://stephubprotocol.xyz) to get API keys
+
+## Questions, problems, ideas
+
+Something unclear, missing, or behaving oddly? Write to
+**[@gallaam](https://t.me/gallaam)** on Telegram — integration questions,
+feature requests and bug reports all welcome, and a real person answers.
+
+If you hit something that cost you debugging time, that is exactly the feedback
+worth sending: several parts of this README exist because a partner reported
+what tripped them up.
