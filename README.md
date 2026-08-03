@@ -43,6 +43,9 @@ verify the signature on events we send you — see [Webhooks](#webhooks).
 npm install @stephub/partner-sdk
 ```
 
+Live API reference — every endpoint, request and response, generated from the
+running service: **[api.stephubprotocol.xyz/api/partners/docs](https://api.stephubprotocol.xyz/api/partners/docs)**
+
 ## Quick Start
 
 ```typescript
@@ -55,25 +58,25 @@ const stephub = new StepHubClient({
 });
 
 // Namespaced API is the easiest entrypoint
-const access = await stephub.users.getAccess('telegram_12345');
+const access = await stephub.users.getAccess('user-42');
 console.log(access.hasAccess);
 console.log(access.trustTier);
 
-const profile = await stephub.users.getProfile('telegram_12345', [
+const profile = await stephub.users.getProfile('user-42', [
   'READ_STEPS',
   'READ_TRUST_TIER',
 ]);
 console.log(profile.steps);
 console.log(profile.trustTier);
 
-const summary = await stephub.users.getSummary('telegram_12345', [
+const summary = await stephub.users.getSummary('user-42', [
   'READ_STEPS',
   'READ_TRUST_TIER',
 ]);
 console.log(summary.access.percentile);
 console.log(summary.profile.steps);
 
-const stats = await stephub.users.getStats('telegram_12345');
+const stats = await stephub.users.getStats('user-42');
 console.log(stats.steps);
 console.log(stats.distance);
 console.log(stats.trustTier);
@@ -90,12 +93,12 @@ makes **your** app look broken.
 Handle it in the same place you read the numbers:
 
 ```typescript
-const access = await stephub.users.getAccess('telegram_12345');
+const access = await stephub.users.getAccess('user-42');
 
 if (access.hasAccess && access.dataFlowing === false) {
   // The zeros below are the tracker's silence, not the user's day.
   // Say so — and ask the device to sync.
-  await stephub.users.nudge('telegram_12345');
+  await stephub.users.nudge('user-42');
   return showTrackerSilent(access.lastSyncAt);
 }
 
@@ -172,14 +175,14 @@ When a user hasn't connected their StepHub mobile app yet:
 ```typescript
 // Start a connection and wait for the result in one call
 const status = await stephub.connections.startAndWait(
-  'telegram_12345',
+  'user-42',
   ['READ_STEPS', 'READ_TRUST_TIER'],
   { intervalMs: 2000, timeoutMs: 300000 },
 );
 
 // Wallet-aware partner flows can attach an optional wallet address to the request.
 const walletAwareConnection = await stephub.connections.start(
-  'farcaster_6841',
+  'user-77',
   ['READ_STEPS', 'READ_TRUST_TIER'],
   { walletAddress: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e' },
 );
@@ -199,7 +202,7 @@ and a human-readable `rejectedMessage`.
 
 ```typescript
 // Get daily activity stats (last 7 days)
-const stats = await stephub.users.getDailyStats('telegram_12345', {
+const stats = await stephub.users.getDailyStats('user-42', {
   startDate: '2026-02-11',
   endDate: '2026-02-18',
 });
@@ -209,7 +212,7 @@ for (const day of stats.days) {
 }
 
 // Get workout history (paginated)
-const workouts = await stephub.users.getWorkoutHistory('telegram_12345', {
+const workouts = await stephub.users.getWorkoutHistory('user-42', {
   limit: 10,
   offset: 0,
 });
@@ -227,10 +230,10 @@ Asks the user's device to sync now, via silent push. Its natural pairing is
 before telling the user anything is wrong.
 
 ```typescript
-const user = await stephub.users.getAccess('telegram_12345');
+const user = await stephub.users.getAccess('user-42');
 
 if (user.dataFlowing === false) {
-  const nudge = await stephub.users.nudge('telegram_12345');
+  const nudge = await stephub.users.nudge('user-42');
   if (nudge.nudged) {
     console.log(`Nudge sent to ${nudge.devicesSent} device(s)`);
   } else {
@@ -292,7 +295,7 @@ Create verifiable on-chain proofs of physical activity using EAS (Ethereum Attes
 
 ```typescript
 // 1. Prepare attestation data
-const attestation = await stephub.prepareAttestation('telegram_12345');
+const attestation = await stephub.prepareAttestation('user-42');
 
 console.log(attestation.schemaUid);          // EAS schema UID
 console.log(attestation.easContractAddress); // EAS contract address
@@ -306,7 +309,7 @@ console.log(attestation.attestFee);          // Fee in wei
 
 // 3. Confirm attestation with StepHub
 const confirmed = await stephub.confirmAttestation(
-  'telegram_12345',
+  'user-42',
   'attestation-uid-from-tx',
   '0xTransactionHash...',
 );
@@ -322,7 +325,7 @@ Prepare a TonConnect-ready soulbound badge mint payload for a user's TON wallet:
 
 ```typescript
 const badge = await stephub.tonBadges.prepare(
-  'telegram_12345',
+  'user-42',
   'UQAol-7LDQ-Pt0G0xsut1vvgBikCiTrx9QCyyPif4QTRJgRf',
 );
 
@@ -364,13 +367,13 @@ StepHub keeps its own internal id regardless of what you send.
 
 ### Use whatever you already have
 
-The `telegram_…` shapes seen elsewhere in these docs are a habit from apps that
-already key users that way — not a requirement. Send whatever is already stable
-on your side:
+Examples here use plain ids like `user-42` deliberately: there is no required
+shape. Send whatever is already stable on your side — a row id, a UUID, your
+own prefixed string:
 
 ```typescript
 // All equally fine — pick whatever is already stable on your side
-await stephub.connections.start(`telegram_${user.telegramId}`, scopes);
+await stephub.connections.start(`user-${user.id}`, scopes);
 await stephub.connections.start(user.id, scopes);            // your own UUID
 await stephub.connections.start(`acct-${user.accountNo}`, scopes);
 ```
@@ -541,7 +544,7 @@ The SDK does not ship a verification helper; the snippet above is all it takes.
 import { StepHubClient, StepHubError } from '@stephub/partner-sdk';
 
 try {
-  const profile = await stephub.users.getProfile('telegram_12345', ['READ_STEPS']);
+  const profile = await stephub.users.getProfile('user-42', ['READ_STEPS']);
   console.log(profile.steps);
 } catch (error) {
   if (error instanceof StepHubError) {
