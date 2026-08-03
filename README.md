@@ -496,7 +496,42 @@ deliver connection lifecycle events to a webhook endpoint registered for your ap
 | Event | When it fires |
 |-------|---------------|
 | `connection.authorized` | The user approved the connection in the mobile app |
-| `connection.revoked` | The user revoked your app's access |
+| `connection.revoked` | Access ended — the user revoked it, or the connection moved to a new device |
+| `activity.synced` | Their device delivered new data |
+| `connection.data_stalled` | The device has gone quiet past the usual gap |
+| `trust.tier_changed` | Their trust tier moved up or down |
+| `badge.minted` | They minted a badge — your referral share is settled on-chain |
+
+Every payload carries `event`, `userId`, `externalUserId` and `timestamp`, plus
+the fields below.
+
+**`activity.synced`** — one event per completed sync, not per changed value:
+
+```json
+{
+  "event": "activity.synced",
+  "externalUserId": "user-42",
+  "daysUpdated": ["2026-08-02", "2026-08-03"],
+  "workoutsAdded": 2
+}
+```
+
+`daysUpdated` tells you what to re-fetch, so you can skip the call entirely when
+nothing you care about moved. This is the event that replaces polling.
+
+**`connection.data_stalled`** — carries `lastSyncAt` (or `null` if they never
+synced). Fires once per silence, not repeatedly, and only after data resumes can
+it fire again. This is the counterpart to `dataFlowing`: the same state, but it
+arrives instead of waiting to be asked for.
+
+**`trust.tier_changed`** — carries `previousTier`, `currentTier` and
+`trustScore`. Only tier changes are reported; the score itself drifts constantly
+and carries no decision on its own. A drop is worth handling: it is the case
+where reacting late costs you.
+
+**`badge.minted`** — carries `chain` (`base` or `ton`) and `txHash`. Note that
+`referralTxHash` at prepare time only means the referral was registered; this
+event means the mint actually happened and your share was paid.
 
 ### Verifying the signature
 
@@ -535,6 +570,23 @@ Handle the same event arriving twice — a retry after a timeout on your side
 means you may already have processed it.
 
 The SDK does not ship a verification helper; the snippet above is all it takes.
+
+Payload types are exported, discriminated on `event`:
+
+```typescript
+import type { StepHubWebhookPayload } from '@stephub/partner-sdk';
+
+function handle(payload: StepHubWebhookPayload) {
+  switch (payload.event) {
+    case 'activity.synced':
+      return refetch(payload.externalUserId, payload.daysUpdated);
+    case 'connection.data_stalled':
+      return showTrackerSilent(payload.lastSyncAt);
+    case 'trust.tier_changed':
+      return payload.currentTier === 'WOOD' ? pauseRewards() : resume();
+  }
+}
+```
 
 ## Error Handling
 

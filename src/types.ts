@@ -448,3 +448,88 @@ export interface PrepareTonBadgeResponse {
    */
   referralTxHash?: string | null;
 }
+
+/** Events StepHub delivers to your webhook endpoint. */
+export type StepHubWebhookEvent =
+  | 'connection.authorized'
+  | 'connection.revoked'
+  | 'activity.synced'
+  | 'connection.data_stalled'
+  | 'trust.tier_changed'
+  | 'badge.minted';
+
+/** Fields present on every webhook payload. */
+export interface StepHubWebhookBase {
+  event: StepHubWebhookEvent;
+  /** StepHub's internal user id */
+  userId: string;
+  /** The id you identified this user by */
+  externalUserId?: string;
+  /** ISO-8601, whole seconds */
+  timestamp: string;
+}
+
+/**
+ * A device delivered new data. One event per completed sync — `daysUpdated`
+ * tells you what to re-fetch, so you can skip the call when nothing you care
+ * about moved.
+ */
+export interface ActivitySyncedPayload extends StepHubWebhookBase {
+  event: 'activity.synced';
+  /** Dates (YYYY-MM-DD) whose summaries changed */
+  daysUpdated: string[];
+  workoutsAdded: number;
+}
+
+/**
+ * The device has gone quiet past the usual gap — the arriving counterpart to
+ * `dataFlowing`. Fires once per silence; another only after data resumes.
+ */
+export interface ConnectionDataStalledPayload extends StepHubWebhookBase {
+  event: 'connection.data_stalled';
+  /** Last time any device of theirs reported, or null if never */
+  lastSyncAt: string | null;
+}
+
+/**
+ * The trust tier moved. Only tier changes are reported — the score drifts
+ * constantly and carries no decision on its own.
+ */
+export interface TrustTierChangedPayload extends StepHubWebhookBase {
+  event: 'trust.tier_changed';
+  previousTier: TrustTier;
+  currentTier: TrustTier;
+  trustScore: number;
+}
+
+/**
+ * A badge was minted, and your referral share settled on-chain. Distinct from
+ * `referralTxHash` at prepare time, which only means the referral was
+ * registered.
+ */
+export interface BadgeMintedPayload extends StepHubWebhookBase {
+  event: 'badge.minted';
+  chain: 'base' | 'ton';
+  txHash: string;
+}
+
+/** Connection lifecycle events carry no extra fields. */
+export interface ConnectionLifecyclePayload extends StepHubWebhookBase {
+  event: 'connection.authorized' | 'connection.revoked';
+}
+
+/**
+ * Discriminated on `event`, so narrowing gives you the right fields:
+ *
+ * ```typescript
+ * if (payload.event === 'activity.synced') {
+ *   payload.daysUpdated; // typed
+ * }
+ * ```
+ */
+export type StepHubWebhookPayload =
+  | ConnectionLifecyclePayload
+  | ActivitySyncedPayload
+  | ConnectionDataStalledPayload
+  | TrustTierChangedPayload
+  | BadgeMintedPayload;

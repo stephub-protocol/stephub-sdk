@@ -1,5 +1,13 @@
 export { StepHubClient, StepHubError } from './client';
 export type {
+  StepHubWebhookEvent,
+  StepHubWebhookBase,
+  StepHubWebhookPayload,
+  ActivitySyncedPayload,
+  ConnectionDataStalledPayload,
+  TrustTierChangedPayload,
+  BadgeMintedPayload,
+  ConnectionLifecyclePayload,
   StepHubClientConfig,
   CheckUserResponse,
   UserDataResponse,
