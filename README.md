@@ -267,11 +267,22 @@ itself is issued — so a failed mint never costs you the payment.
 The response carries `referralTxHash`: the registration transaction, or `null`
 if your app has no owner address for that chain.
 
-**Set an owner address for each chain you care about.** They are separate:
-an EVM address earns on Base attestations, a TON address earns on TON badges.
-Missing one means mints on that chain pay you nothing — silently, since
-everything else keeps working. Both are set when registering your app at
-[/developers](https://stephubprotocol.xyz/developers).
+**Set a payout address for each chain you care about** — they are separate,
+and configured when you register your app at
+[/developers](https://stephubprotocol.xyz/developers):
+
+| Chain | Field | If left empty |
+|-------|-------|---------------|
+| Base | `evmPayoutAddress` | Paid to the wallet you signed in with |
+| TON | `ownerTonAddress` | **You earn nothing from TON mints** |
+
+The Base field is optional because it falls back to your sign-in wallet; set it
+only if payouts should go elsewhere, such as a treasury. TON has no such
+fallback — without an address there, those mints pay you nothing, and nothing
+else about your integration changes to signal it.
+
+Your sign-in wallet stays your identity as the app owner either way; only the
+payout target moves.
 
 ## On-Chain Proofs
 
