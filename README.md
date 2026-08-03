@@ -44,6 +44,36 @@ console.log(stats.distance);
 console.log(stats.trustTier);
 ```
 
+### Always check whether data is flowing
+
+A connection stays `ACTIVE` because the user never revoked permission — that
+says nothing about whether their device still reports. A tracker can be silent
+for months while `hasAccess` is `true` and every metric reads `0`. Rendering
+those zeros as real numbers is the single most common integration bug, and it
+makes **your** app look broken.
+
+Handle it in the same place you read the numbers:
+
+```typescript
+const access = await stephub.users.getAccess('telegram_12345');
+
+if (access.hasAccess && access.dataFlowing === false) {
+  // The zeros below are the tracker's silence, not the user's day.
+  // Say so — and ask the device to sync.
+  await stephub.users.nudge('telegram_12345');
+  return showTrackerSilent(access.lastSyncAt);
+}
+
+console.log(access.totalSteps);
+```
+
+- **`dataFlowing: false`** — the device has been silent well past a normal gap.
+  This is the flag to branch on.
+- **`stale: true`** — no sync within the last few hours. True for most users
+  overnight, so it is *not* a reason to hide data on its own.
+- **`nudge()`** — asks the user's device to sync now. Its natural pairing is
+  exactly this branch; see [Nudge](#nudge-sync-fresh-data) for limits.
+
 ## Privacy Boundary
 
 All step and distance data returned by the API is scoped to the period **since the user connected to your specific app** — not the user's all-time lifetime total.
@@ -179,6 +209,54 @@ console.log(badge.expectedItemAddress); // deterministic soulbound badge address
 // Forward into TonConnect from your app:
 // messages: [{ address: badge.collectionAddress, amount: badge.amount, payload: badge.payload }]
 ```
+
+## Field Names Across Endpoints
+
+Distance is always **metres** and energy is always **kcal**, but the field names
+differ by endpoint. Reading for a name that does not exist yields `undefined`,
+which silently becomes `0` in most UIs — so check this table rather than
+guessing:
+
+| Meaning | `getAccess` | `getDailyStats` day | `getWorkoutHistory` item |
+|---|---|---|---|
+| Steps | `totalSteps`, `avgDailySteps`, `weeklySteps` | `steps` | — |
+| Distance (m) | `totalDistance` | `distance` | `distance` |
+| Energy (kcal) | — | `activeKcal` | `energy` |
+| Floors climbed | — | `flights` | — |
+| Data present | `dataFlowing` | `hasData` | — |
+
+There is no `distanceM` or `elevationGain` anywhere in the API.
+
+`activeKcal` on a daily row is energy for **the whole day**. Summing workout
+energy instead returns 0 kcal for someone who walked all day without logging a
+session — the number you want is already in the row you fetched.
+
+## External IDs Are Permanent
+
+The `externalUserId` you pass to `connections.start` identifies that user
+forever. Do not derive it from anything that can change, and do not recompute it
+on each call — if the formula ever changes, the account stays connected while
+every read returns "user not found", with nothing failing loudly.
+
+```typescript
+// Good: stable, taken straight from your own user record
+await stephub.connections.start(`telegram_${user.telegramId}`, scopes);
+
+// Bad: derived from data that may change, or re-prefixed each time
+await stephub.connections.start(`telegram_${buildExtId(user)}`, scopes);
+```
+
+## Unknown vs. Disconnected Users
+
+`getAccess` answers `200` for a user who does not exist:
+
+```json
+{ "exists": false, "hasAccess": false }
+```
+
+A user who never existed and one who disconnected are **not distinguishable**
+from this response. If you need that difference — for churn metrics, say —
+record it on your side at connect time.
 
 ## API Reference
 

@@ -68,7 +68,19 @@ export interface CheckUserResponse {
   /** Weekly steps change percentage */
   weeklyDelta?: number;
   /** Whether data may be outdated */
+  /**
+   * True when no sync landed within the staleness threshold (6h by default).
+   * Trips for most users overnight — it does NOT mean the tracker is dead.
+   * Use `dataFlowing` for that.
+   */
   stale?: boolean;
+  /**
+   * False when the device has been silent well past a normal gap, i.e. this
+   * connection is no longer producing data. Zeros in the same response are the
+   * tracker's silence, not the user's day — say so in your UI rather than
+   * rendering them as real values, and consider calling `nudge()`.
+   */
+  dataFlowing?: boolean;
   /** Last sync timestamp (ISO 8601) */
   lastSyncAt?: string;
   /** Currently granted permissions */
@@ -161,7 +173,19 @@ export interface StepHubAccess {
   percentile?: number;
   weeklySteps?: number;
   weeklyDelta?: number;
+  /**
+   * True when no sync landed within the staleness threshold (6h by default).
+   * Trips for most users overnight — it does NOT mean the tracker is dead.
+   * Use `dataFlowing` for that.
+   */
   stale?: boolean;
+  /**
+   * False when the device has been silent well past a normal gap, i.e. this
+   * connection is no longer producing data. Zeros in the same response are the
+   * tracker's silence, not the user's day — say so in your UI rather than
+   * rendering them as real values, and consider calling `nudge()`.
+   */
+  dataFlowing?: boolean;
   lastSyncAt?: string;
   permissions?: string[];
   connectionStatus?: string;
@@ -268,6 +292,13 @@ export interface DailyStatDay {
   activeKcal: number;
   /** Flights of stairs climbed */
   flights: number;
+  /**
+   * Whether the device reported anything for this day. False means no data was
+   * received — NOT that the user walked zero steps. Every requested day is
+   * returned, so summing `steps` without checking this presents silence as a
+   * confident zero.
+   */
+  hasData: boolean;
 }
 
 export interface DailyStatsOptions {
@@ -293,7 +324,19 @@ export interface DailyStatsResponse {
   /** End date of the range */
   endDate: string;
   /** Whether data may be outdated */
+  /**
+   * True when no sync landed within the staleness threshold (6h by default).
+   * Trips for most users overnight — it does NOT mean the tracker is dead.
+   * Use `dataFlowing` for that.
+   */
   stale?: boolean;
+  /**
+   * False when the device has been silent well past a normal gap, i.e. this
+   * connection is no longer producing data. Zeros in the same response are the
+   * tracker's silence, not the user's day — say so in your UI rather than
+   * rendering them as real values, and consider calling `nudge()`.
+   */
+  dataFlowing?: boolean;
   /** Last sync timestamp (ISO 8601) */
   lastSyncAt?: string;
 }
