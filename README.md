@@ -253,6 +253,26 @@ if (user.dataFlowing === false) {
 - `devicesSent: 0` means no device could be reached at all, most often because
   none has a push token registered yet.
 
+## Earning from mints
+
+When one of your users mints a proof, **you get a share of the mint fee** —
+20% by default — paid on-chain, automatically.
+
+It works without any code on your side. Register your app with a wallet
+address as owner, and when you call `attestations.prepare()` or
+`tonBadges.prepare()` the backend registers the referral on-chain first. The
+contract then pays your share the moment the user mints, before the badge
+itself is issued — so a failed mint never costs you the payment.
+
+The response carries `referralTxHash`: the registration transaction, or `null`
+if your app has no owner address for that chain.
+
+**Set an owner address for each chain you care about.** They are separate:
+an EVM address earns on Base attestations, a TON address earns on TON badges.
+Missing one means mints on that chain pay you nothing — silently, since
+everything else keeps working. Both are set when registering your app at
+[/developers](https://stephubprotocol.xyz/developers).
+
 ## On-Chain Proofs
 
 ### Base/EVM Attestation

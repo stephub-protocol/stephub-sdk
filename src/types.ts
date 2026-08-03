@@ -440,6 +440,11 @@ export interface PrepareTonBadgeResponse {
   validUntilSeconds: number;
   /** Pending StepHub row ID for server-side tracking */
   pendingId: string;
-  /** Referral registration transaction hash, or null if referral was skipped */
+  /**
+   * Referral registration transaction, or null if skipped.
+   *
+   * Skipped means your app has no owner address for this chain — and that you
+   * earn nothing from this mint. See "Earning from mints" in the README.
+   */
   referralTxHash?: string | null;
 }
