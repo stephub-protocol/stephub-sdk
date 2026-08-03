@@ -395,19 +395,12 @@ record it on your side at connect time.
 | `apiUrl` | `string` | StepHub API base URL (`https://api.stephubprotocol.xyz`) |
 | `clientId` | `string` | Your app's client ID |
 | `clientSecret` | `string` | Your app's client secret |
-| `timeout` | `number` | Request timeout in ms once warm (default: 30000) |
-| `firstRequestTimeout` | `number` | Timeout in ms for this client's first request (default: 45000) |
-
-#### Why two timeouts
+| `timeout` | `number` | Request timeout in ms (default: 30000) |
+| `firstRequestTimeout` | `number` | Timeout for the first request of this client (default: 45000) |
 
 The first request of a process pays for DNS, TCP and the TLS handshake with
-nothing cached. Measured against production, that cold path took **5-34s**
-while established connections settle at **110-120ms**. A single 10s budget
-therefore failed exactly one call — the first one after every deploy, which is
-also when the service is watched most closely.
-
-If you want that cost paid before real traffic arrives, warm the client at
-startup:
+nothing cached, so it gets a larger budget than the ones after it. To pay that
+cost before real traffic arrives, warm the client at startup:
 
 ```typescript
 // Fire and forget at boot — the first user request then rides a warm connection

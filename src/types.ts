@@ -5,22 +5,13 @@ export interface StepHubClientConfig {
   clientId: string;
   /** Your registered application client secret */
   clientSecret: string;
-  /**
-   * Request timeout in ms once the client is warm (default: 30000).
-   *
-   * Raised from 10s after production measurements: the API sits behind a CDN
-   * whose TLS handshake on a cold connection was observed taking 5-34s while
-   * TCP connected in ~120ms and the origin answered in ~116ms. Established
-   * connections settle at 110-120ms, so the old default only ever failed the
-   * first call — reliably, right after every deploy.
-   */
+  /** Request timeout in ms (default: 30000). */
   timeout?: number;
   /**
-   * Timeout in ms for the very first request of this client (default: 45000).
+   * Timeout in ms for this client's first request (default: 45000).
    *
-   * That first call pays for DNS, TCP and the TLS handshake before any of it
-   * is cached, and is the one that used to fail. Later calls reuse all of it
-   * and fall back to `timeout`.
+   * That call pays for DNS, TCP and the TLS handshake before any of it is
+   * cached; later calls reuse all three and fall back to `timeout`.
    */
   firstRequestTimeout?: number;
 }
