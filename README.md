@@ -505,6 +505,11 @@ deliver connection lifecycle events to a webhook endpoint registered for your ap
 Every payload carries `event`, `userId`, `externalUserId` and `timestamp`, plus
 the fields below.
 
+**Matching the event to your user:** use `externalUserId` — the id you passed to
+`connections.start()`. It is always present, because starting a connection
+requires it. `userId` is StepHub's own identifier; it is stable and appears in
+API responses too, but it is not the one you stored.
+
 **`activity.synced`** — one event per completed sync, not per changed value:
 
 ```json

@@ -461,9 +461,15 @@ export type StepHubWebhookEvent =
 /** Fields present on every webhook payload. */
 export interface StepHubWebhookBase {
   event: StepHubWebhookEvent;
-  /** StepHub's internal user id */
+  /** StepHub's internal user id — stable, but usually not the one you store. */
   userId: string;
-  /** The id you identified this user by */
+  /**
+   * The id you identified this user by when calling `connections.start()`.
+   *
+   * Always present for connections created through the SDK, since starting one
+   * requires it — this is the field to match against your own records. Typed
+   * optional only because the column predates that requirement.
+   */
   externalUserId?: string;
   /** ISO-8601, whole seconds */
   timestamp: string;
