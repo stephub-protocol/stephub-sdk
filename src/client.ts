@@ -213,6 +213,7 @@ export class StepHubClient {
    * @param userId - External user ID
    * @param options - Optional date range and limit filters
    */
+  /** @deprecated Use `client.users.getDailyStats()`. The flat and namespaced forms are identical; the namespaced one is canonical and this will be removed in 1.0. */
   async getDailyStats(userId: string, options?: DailyStatsOptions): Promise<DailyStatsResponse> {
     const query = this.buildQuery({ userId, ...options });
     return this.request(`/api/v1/partners/daily-stats${query}`);
@@ -227,6 +228,7 @@ export class StepHubClient {
    * @param userId - External user ID
    * @param options - Optional pagination (limit, offset)
    */
+  /** @deprecated Use `client.users.getWorkoutHistory()`. The flat and namespaced forms are identical; the namespaced one is canonical and this will be removed in 1.0. */
   async getWorkoutHistory(userId: string, options?: WorkoutHistoryOptions): Promise<WorkoutHistoryResponse> {
     const query = this.buildQuery({ userId, ...options });
     return this.request(`/api/v1/partners/workout-history${query}`);
@@ -302,6 +304,7 @@ export class StepHubClient {
    * @param externalUserId - Your platform's user ID (e.g. "telegram_12345")
    * @param permissions - Requested permissions (e.g. ["READ_STEPS", "READ_TRUST_TIER"])
    */
+  /** @deprecated Use `client.connections.start()`. The flat and namespaced forms are identical; the namespaced one is canonical and this will be removed in 1.0. */
   async requestConnection(
     externalUserId: string,
     permissions: Scope[],
@@ -325,6 +328,7 @@ export class StepHubClient {
    *
    * @param requestId - Request ID from `requestConnection()` response
    */
+  /** @deprecated Use `client.connections.status()`. The flat and namespaced forms are identical; the namespaced one is canonical and this will be removed in 1.0. */
   async getConnectionStatus(requestId: string): Promise<ConnectionStatusResponse> {
     return this.request(
       `/api/v1/connections/status/${encodeURIComponent(requestId)}`,
@@ -376,10 +380,12 @@ export class StepHubClient {
 
   // ── Convenience aliases ──
 
+  /** @deprecated Use `client.users.getAccess()`. The flat and namespaced forms are identical; the namespaced one is canonical and this will be removed in 1.0. */
   async getAccess(userId: string): Promise<StepHubAccess> {
     return this.checkUser(userId);
   }
 
+  /** @deprecated Use `client.users.getProfile()`. The flat and namespaced forms are identical; the namespaced one is canonical and this will be removed in 1.0. */
   async getProfile(userId: string, scopes: Scope[]): Promise<StepHubProfile> {
     const response = await this.getUserData(userId, scopes);
     return {
@@ -414,6 +420,7 @@ export class StepHubClient {
     return this.waitForAuthorization(connection.requestId, waitOptions);
   }
 
+  /** @deprecated Use `client.users.getSummary()`. The flat and namespaced forms are identical; the namespaced one is canonical and this will be removed in 1.0. */
   async getUserSummary(userId: string, scopes: Scope[]): Promise<StepHubUserSummary> {
     const [access, profile] = await Promise.all([
       this.getAccess(userId),
@@ -423,16 +430,19 @@ export class StepHubClient {
     return { access, profile };
   }
 
+  /** @deprecated Use `client.users.getSteps()`. The flat and namespaced forms are identical; the namespaced one is canonical and this will be removed in 1.0. */
   async getSteps(userId: string): Promise<number> {
     const profile = await this.getProfile(userId, ['READ_STEPS']);
     return profile.steps ?? 0;
   }
 
+  /** @deprecated Use `client.users.getDistance()`. The flat and namespaced forms are identical; the namespaced one is canonical and this will be removed in 1.0. */
   async getDistance(userId: string): Promise<number> {
     const profile = await this.getProfile(userId, ['READ_DISTANCE']);
     return profile.distance ?? 0;
   }
 
+  /** @deprecated Use `client.users.getTrust()`. The flat and namespaced forms are identical; the namespaced one is canonical and this will be removed in 1.0. */
   async getTrust(userId: string): Promise<Pick<StepHubAccess, 'trustScore' | 'trustTier' | 'rank' | 'percentile'>> {
     const access = await this.getAccess(userId);
     return {
@@ -443,6 +453,7 @@ export class StepHubClient {
     };
   }
 
+  /** @deprecated Use `client.users.getStats()`. The flat and namespaced forms are identical; the namespaced one is canonical and this will be removed in 1.0. */
   async getStats(userId: string): Promise<StepHubStatsSummary> {
     const [steps, distance, trust] = await Promise.all([
       this.getSteps(userId),
@@ -460,6 +471,7 @@ export class StepHubClient {
     };
   }
 
+  /** @deprecated Use `client.users.ensureAccess()`. The flat and namespaced forms are identical; the namespaced one is canonical and this will be removed in 1.0. */
   async ensureAccess(userId: string): Promise<StepHubAccess> {
     const access = await this.getAccess(userId);
 

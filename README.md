@@ -287,6 +287,15 @@ stephub.users.getAccess('warmup').catch(() => {});
 ```
 
 
+### Two ways to call, one canonical
+
+Every method exists both flat (`client.getAccess()`) and namespaced
+(`client.users.getAccess()`). They are the same call. The **namespaced form is
+canonical**; the flat ones are marked `@deprecated` and will be removed in 1.0.
+
+Nothing breaks today — this only removes the ambiguity of seeing each method
+twice in autocomplete without knowing which to pick.
+
 ### Methods
 
 | Method | Description |
